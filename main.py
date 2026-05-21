@@ -2,7 +2,7 @@
 Main FastAPI Application
 Entry point for AI Radio Presenter system
 """
-import asyncio
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,19 +16,27 @@ from app.services.radio_service import initialize_radio_service
 
 # Configure logging
 configure_logging(CONFIG.broadcast.log_level)
-logger = __import__("logging").getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan management
-    Handles startup and shutdown
-    """
-    # Startup
     logger.info("Starting AI Radio Presenter System")
-    
+    app.state.ready = False
+
+    missing_vars = []
+    if not CONFIG.api.openai_key:
+        missing_vars.append("OPENAI_API_KEY")
+    if not CONFIG.api.elevenlabs_key:
+        missing_vars.append("ELEVENLABS_API_KEY")
+
+    if missing_vars:
+        logger.warning(
+            "Missing environment variables; AI functionality may be degraded: %s",
+            ", ".join(missing_vars),
+        )
+
     try:
         service = initialize_radio_service({
             "openai_api_key": CONFIG.api.openai_key,
@@ -40,18 +48,18 @@ async def lifespan(app: FastAPI):
             "openai_model": CONFIG.api.openai_model,
             "elevenlabs_api_key": CONFIG.api.elevenlabs_key,
         })
+        app.state.ready = True
         logger.info("Services initialized successfully")
-    except Exception as e:
-        logger.error(f"Error during startup: {e}")
-    
+    except Exception as exc:
+        logger.exception("Startup initialization failed")
+        raise
+
     yield
-    
-    # Shutdown
+
     logger.info("Shutting down AI Radio Presenter System")
-    # Add cleanup code here if needed
+    app.state.ready = False
 
 
-# Create FastAPI application
 app = FastAPI(
     title=CONFIG.app_name,
     description="Production-Ready Autonomous AI Radio Presenter System",
@@ -61,8 +69,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -71,16 +77,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Include routes
 app.include_router(router)
 app.include_router(show_router)
 
 
-# Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    """Global exception handler"""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
@@ -90,24 +92,28 @@ async def global_exception_handler(request, exc):
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
     return {
         "service": CONFIG.app_name,
         "version": CONFIG.version,
         "status": "running",
-        "docs": "/docs",
+        "health": "/health",
         "api_base": "/api/v1/radio/shows",
         "environment": CONFIG.environment,
     }
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=10000,
         reload=CONFIG.debug,
         log_level=CONFIG.broadcast.log_level.lower(),
     )

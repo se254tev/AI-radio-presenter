@@ -1,106 +1,43 @@
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
 venv/
-ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+**pycache**/
+*.pyc
+.env
 
-# Virtual environments
-venv/
-.venv
-env/
-ENV/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Optional common ignores
 .DS_Store
-.env.local
+Thumbs.db
+
+# Local application logs
+logs/
+*.log
 
 # Environment
-.env
+.env.local
 .env.*
 !.env.example
 
-# Application logs
-logs/
-*.log
-*.log.*
+# Editor
+.vscode/
+.idea/
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# Build
+dist/
+build/
+*.egg-info/
 
-# Cache
-.cache/
-__pycache__/
-*.pyc
+# Dependency artifacts
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Tests
-.coverage
-.pytest_cache/
-htmlcov/
-
-# Redis/Database
-*.rdb
-*.aof
-postgres_data/
-redis_data/
-
-# Docker
-docker-compose.override.yml
-.docker/
-
-# Audio files (can be large)
+# Audio cache
 audio/
 *.mp3
 *.wav
 *.aac
 
-# State files
-show_states/
-*.state
-
-# IDE
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Dependencies
-pip-log.txt
-pip-delete-this-directory.txt
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Black formatter
-.black/
+# Database artifacts
+postgres_data/
+redis_data/
+*.rdb
+*.aof

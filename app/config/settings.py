@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
 try:
     from dotenv import load_dotenv
@@ -36,13 +37,36 @@ def _get_env_float(name: str, default: float) -> float:
         return default
 
 
+def _parse_redis_url(url: str) -> dict:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"redis", "rediss"}:
+        return {}
+    path = parsed.path.lstrip("/")
+    return {
+        "host": parsed.hostname or "localhost",
+        "port": parsed.port or 6379,
+        "db": int(path) if path.isdigit() else 0,
+        "password": parsed.password,
+    }
+
+
 @dataclass
 class RedisSettings:
+    redis_url: Optional[str] = os.getenv("REDIS_URL")
     host: str = os.getenv("REDIS_HOST", "localhost")
     port: int = _get_env_int("REDIS_PORT", 6379)
     db: int = _get_env_int("REDIS_DB", 0)
     password: Optional[str] = os.getenv("REDIS_PASSWORD")
     enable: bool = _get_env_bool("REDIS_ENABLE", True)
+
+    def __post_init__(self):
+        if self.redis_url:
+            parsed = _parse_redis_url(self.redis_url)
+            if parsed:
+                self.host = parsed.get("host", self.host)
+                self.port = parsed.get("port", self.port)
+                self.db = parsed.get("db", self.db)
+                self.password = parsed.get("password", self.password)
 
 
 @dataclass

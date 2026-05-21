@@ -1,0 +1,106 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.local
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Application logs
+logs/
+*.log
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+__pycache__/
+*.pyc
+
+# Tests
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Redis/Database
+*.rdb
+*.aof
+postgres_data/
+redis_data/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Audio files (can be large)
+audio/
+*.mp3
+*.wav
+*.aac
+
+# State files
+show_states/
+*.state
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+pip-log.txt
+pip-delete-this-directory.txt
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Black formatter
+.black/

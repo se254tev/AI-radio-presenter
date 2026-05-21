@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Redis for state management
+  redis:
+    image: redis:7-alpine
+    container_name: radio-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for persistent logging
+  postgres:
+    image: postgres:15-alpine
+    container_name: radio-ai-postgres
+    environment:
+      POSTGRES_DB: radio_ai
+      POSTGRES_USER: radio_user
+      POSTGRES_PASSWORD: radio_password_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radio_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  app:
+    build: .
+    container_name: radio-ai-app
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_ENABLE: "true"
+      
+      # Database
+      DATABASE_URL: postgresql://radio_user:radio_password_dev@postgres:5432/radio_ai
+      
+      # APIs (use empty keys for mock mode)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk_mock}
+      OPENAI_MODEL: gpt-4-turbo
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-mock_key}
+      
+      # Broadcast settings
+      ENABLE_AUDIO: "true"
+      ENABLE_PERSISTENCE: "true"
+      LOG_LEVEL: INFO
+      
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    
+    volumes:
+      - ./app:/app/app
+      - ./logs:/app/logs
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/radio/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  default:
+    name: radio-ai-network

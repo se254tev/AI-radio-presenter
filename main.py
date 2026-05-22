@@ -100,10 +100,16 @@ async def lifespan(app: FastAPI):
         # Initialize MongoDB service
         logger.info("Initializing MongoDB service...")
         try:
-            await mongo_service.initialize()
-            app.state.mongo = mongo_service
+            success = await mongo_service.initialize(retries=3, delay=1.5)
+            if success:
+                app.state.mongo = mongo_service
+                logger.info("✅ MongoDB service initialized")
+            else:
+                logger.warning("⚠️  MongoDB not available - AI memory features will be limited")
+                app.state.mongo = None
         except Exception as e:
-            logger.error(f"MongoDB init failed: {e}")
+            logger.warning(f"⚠️  MongoDB init failed: {e} - AI memory features will be limited")
+            app.state.mongo = None
 
         # Initialize Redis service
         if CONFIG.redis.enable:
@@ -184,7 +190,7 @@ async def lifespan(app: FastAPI):
         logger.exception("Error closing Postgres")
 
     try:
-        if hasattr(app.state, 'mongo'):
+        if hasattr(app.state, 'mongo') and app.state.mongo:
             await app.state.mongo.close()
     except Exception:
         logger.exception("Error closing MongoDB")

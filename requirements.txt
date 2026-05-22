@@ -20,8 +20,9 @@ alembic==1.13.0
 # Async Postgres driver
 asyncpg==0.27.0
 
-# Async MongoDB driver
-motor==4.4.0
+# Async MongoDB driver (compatible with Python 3.11)
+motor==3.7.1
+pymongo>=4.9,<5.0
 
 APScheduler==3.10.4
 

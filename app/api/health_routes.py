@@ -6,7 +6,7 @@ import psutil
 from datetime import datetime
 from typing import Dict, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 logger = logging.getLogger(__name__)
 
@@ -105,5 +105,51 @@ async def ai_metrics() -> Dict[str, Any]:
         "model": "gpt-4-turbo",
         "last_generation": None,
         "generation_count": 0,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/health/databases")
+async def database_health(request: Request) -> Dict[str, Any]:
+    """Database connectivity health check"""
+    app = request.app
+    
+    database_status = {
+        "postgres": "unavailable",
+        "mongodb": "unavailable",
+        "redis": "unavailable",
+    }
+    
+    # Check Postgres
+    try:
+        if hasattr(app.state, 'postgres') and app.state.postgres:
+            # Simple ping
+            await app.state.postgres.client.connection.cursor().execute("SELECT 1")
+            database_status["postgres"] = "connected"
+    except Exception as e:
+        logger.warning(f"Postgres health check failed: {e}")
+        database_status["postgres"] = "error"
+    
+    # Check MongoDB
+    try:
+        if hasattr(app.state, 'mongo') and app.state.mongo:
+            is_healthy = await app.state.mongo.health_check()
+            database_status["mongodb"] = "connected" if is_healthy else "unhealthy"
+    except Exception as e:
+        logger.warning(f"MongoDB health check failed: {e}")
+        database_status["mongodb"] = "error"
+    
+    # Check Redis
+    try:
+        if hasattr(app.state, 'redis') and app.state.redis:
+            is_healthy = await app.state.redis.ping()
+            database_status["redis"] = "connected" if is_healthy else "unhealthy"
+    except Exception as e:
+        logger.warning(f"Redis health check failed: {e}")
+        database_status["redis"] = "error"
+    
+    return {
+        "status": "healthy" if database_status.get("mongodb") in ["connected", "unavailable"] else "degraded",
+        "databases": database_status,
         "timestamp": datetime.utcnow().isoformat(),
     }

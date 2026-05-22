@@ -25,6 +25,9 @@ from app.streaming.websocket import handle_ws_connection, ws_manager
 from app.core.broadcast_loop import BroadcastLoop
 from app.models.show import ShowPlan
 from app.core.state_engine import state_engine
+from app.db.postgres_service import postgres_service
+from app.db.mongo_service import mongo_service
+from app.core.redis import redis_service
 
 # Configure logging
 configure_logging(CONFIG.broadcast.log_level)
@@ -86,6 +89,37 @@ async def lifespan(app: FastAPI):
         logger.info("Initializing music queue...")
         await music_queue.initialize()
 
+        # Initialize Postgres (Supabase) service
+        logger.info("Initializing Postgres/Supabase service...")
+        try:
+            await postgres_service.initialize()
+            app.state.postgres = postgres_service
+        except Exception as e:
+            logger.error(f"Postgres init failed: {e}")
+
+        # Initialize MongoDB service
+        logger.info("Initializing MongoDB service...")
+        try:
+            await mongo_service.initialize()
+            app.state.mongo = mongo_service
+        except Exception as e:
+            logger.error(f"MongoDB init failed: {e}")
+
+        # Initialize Redis service
+        if CONFIG.redis.enable:
+            logger.info("Initializing Redis service...")
+            try:
+                await redis_service.initialize()
+                app.state.redis = redis_service
+                # Set redis client in state engine for caching
+                if redis_service.client:
+                    state_engine.set_redis_client(redis_service.client)
+                logger.info("✅ Redis service initialized")
+            except Exception as e:
+                logger.error(f"Redis init failed: {e} - Redis features will be disabled")
+        else:
+            logger.info("Redis disabled in configuration")
+
         # Legacy radio service initialization
         logger.info("Initializing legacy radio service...")
         service = initialize_radio_service({
@@ -142,6 +176,24 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down AI Radio Presenter System")
     logger.info("=" * 60)
     app.state.ready = False
+    # Close DB connections
+    try:
+        if hasattr(app.state, 'postgres'):
+            await app.state.postgres.close()
+    except Exception:
+        logger.exception("Error closing Postgres")
+
+    try:
+        if hasattr(app.state, 'mongo'):
+            await app.state.mongo.close()
+    except Exception:
+        logger.exception("Error closing MongoDB")
+
+    try:
+        if hasattr(app.state, 'redis'):
+            await app.state.redis.close()
+    except Exception:
+        logger.exception("Error closing Redis")
 
 
 app = FastAPI(

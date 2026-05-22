@@ -8,14 +8,6 @@ import logging
 import asyncio
 from typing import Optional, Dict, Any, List
 
-try:
-    from redis.asyncio import Redis
-except ImportError:
-    Redis = None
-    logging.getLogger(__name__).warning(
-        "redis.asyncio is not installed; state persistence will use in-memory fallback."
-    )
-
 from app.config.settings import CONFIG
 from app.models.show import ShowPlan
 from app.models.state import (
@@ -37,41 +29,19 @@ class StateEngine:
     """
 
     def __init__(self, use_redis: bool = True):
-        self.use_redis = use_redis and CONFIG.redis.enable and Redis is not None
-        self.redis_client: Optional[Redis] = None
+        self.use_redis = use_redis and CONFIG.redis.enable
+        self.redis_client = None  # Will be set via redis_service singleton
         self.memory_store = MemoryStore()
         self._lock = asyncio.Lock()
 
-        if self.use_redis:
-            self._init_redis()
-
-    def _init_redis(self) -> None:
-        if Redis is None:
-            logger.warning(
-                "Redis client library not installed; falling back to in-memory storage."
-            )
-            self.use_redis = False
-            return
-
-        try:
-            self.redis_client = Redis(
-                host=CONFIG.redis.host,
-                port=CONFIG.redis.port,
-                db=CONFIG.redis.db,
-                password=CONFIG.redis.password,
-                decode_responses=True,
-            )
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self.redis_client.ping())
-            except RuntimeError:
-                asyncio.run(self.redis_client.ping())
-            logger.info("Redis connected successfully")
-        except Exception as exc:
-            logger.warning(
-                f"Redis connection failed ({exc}). Falling back to in-memory storage."
-            )
-            self.redis_client = None
+    def set_redis_client(self, redis_client):
+        """Set the redis client from redis_service singleton (called during app initialization)."""
+        self.redis_client = redis_client
+        if self.redis_client:
+            logger.info("Redis client initialized for state engine")
+            self.use_redis = True
+        else:
+            logger.warning("Redis client not available; using in-memory fallback")
             self.use_redis = False
 
     async def save_state(self, state: ShowState) -> bool:

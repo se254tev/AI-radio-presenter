@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, Field, AnyUrl, validator
+from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator, ValidationInfo
 from typing import Optional
 from pathlib import Path
 
@@ -7,13 +8,13 @@ class RedisConfig(BaseSettings):
     redis_url: str = Field("", env="REDIS_URL")
     enable: bool = Field(True, env="REDIS_ENABLE")
 
-    class Config:
-        env_prefix = ""
+    model_config = {"env_prefix": ""}
 
-    @validator("redis_url", pre=True, always=True)
-    def validate_redis_url(cls, v, values):
+    @field_validator("redis_url", mode="after")
+    @classmethod
+    def validate_redis_url(cls, v: str, info: ValidationInfo) -> str:
         """Ensure REDIS_URL is provided when REDIS_ENABLE is True."""
-        enable = values.get("enable", True)
+        enable = info.data.get("enable", True)
         if enable and not v:
             raise ValueError("REDIS_URL must be provided when REDIS_ENABLE=true")
         return v
@@ -24,16 +25,14 @@ class DatabaseConfig(BaseSettings):
     supabase_url: Optional[str] = Field(None, env="SUPABASE_URL")
     supabase_key: Optional[str] = Field(None, env="SUPABASE_KEY")
 
-    class Config:
-        env_prefix = ""
+    model_config = {"env_prefix": ""}
 
 
 class MongoConfig(BaseSettings):
     mongo_uri: str = Field("mongodb://localhost:27017", env="MONGO_URI")
     mongo_db: str = Field("radio_ai", env="MONGO_DB_NAME")
 
-    class Config:
-        env_prefix = ""
+    model_config = {"env_prefix": ""}
 
 
 class APIConfig(BaseSettings):
@@ -43,8 +42,7 @@ class APIConfig(BaseSettings):
     elevenlabs_api_key: Optional[str] = Field(None, env="ELEVENLABS_API_KEY")
     elevenlabs_voice_id: str = Field("default", env="ELEVENLABS_VOICE_ID")
 
-    class Config:
-        env_prefix = ""
+    model_config = {"env_prefix": ""}
 
 
 class BroadcastConfig(BaseSettings):
@@ -56,32 +54,32 @@ class BroadcastConfig(BaseSettings):
     default_language: str = Field("english", env="DEFAULT_LANGUAGE")
     log_level: str = Field("INFO", env="LOG_LEVEL")
 
+    model_config = {"env_prefix": ""}
+
 
 class Settings(BaseSettings):
     # App
     app_name: str = Field("AI Radio Presenter", env="APP_NAME")
     environment: str = Field("development", env="APP_ENV")
     debug: bool = Field(False, env="DEBUG")
+    version: str = Field("1.0.0", env="VERSION")
 
     # Databases
-    database: DatabaseConfig = DatabaseConfig()
-    mongo: MongoConfig = MongoConfig()
-    redis: RedisConfig = RedisConfig()
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    mongo: MongoConfig = Field(default_factory=MongoConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
 
     # APIs
-    api: APIConfig = APIConfig()
+    api: APIConfig = Field(default_factory=APIConfig)
 
     # Broadcast
-    broadcast: BroadcastConfig = BroadcastConfig()
+    broadcast: BroadcastConfig = Field(default_factory=BroadcastConfig)
 
-    class Config:
-        env_file = str(Path(__file__).resolve().parent.parent / ".env")
-        env_file_encoding = "utf-8"
-
-    @validator("database", pre=True, always=True)
-    def validate_database(cls, v):
-        # Ensure DATABASE_URL is present if SUPABASE not used
-        return v
+    model_config = {
+        "env_file": str(Path(__file__).resolve().parent.parent / ".env"),
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 CONFIG = Settings()

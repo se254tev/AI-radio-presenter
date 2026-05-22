@@ -54,14 +54,14 @@ class Segment:
     requires_context: list[str] = field(default_factory=list)  # e.g., ["weather", "news"]
     metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data['segment_type'] = self.segment_type.value
         data['mood'] = self.mood.value
         return data
     
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Segment':
+    def from_dict(cls, data: dict[str, Any]) -> 'Segment':
         data_copy = data.copy()
         data_copy['segment_type'] = SegmentType(data_copy['segment_type'])
         data_copy['mood'] = Mood(data_copy['mood'])
@@ -98,7 +98,7 @@ class ShowPlan:
     buffer_seconds: int = 30  # Extra buffer for transitions
     version: str = "1.0"
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict"""
         data = asdict(self)
         data['created_at'] = self.created_at.isoformat()
@@ -107,7 +107,7 @@ class ShowPlan:
         return data
     
     @classmethod
-    def from_dict(cls, data: Dict) -> 'ShowPlan':
+    def from_dict(cls, data: dict[str, Any]) -> 'ShowPlan':
         """Reconstruct from dict"""
         data_copy = data.copy()
         data_copy['created_at'] = datetime.fromisoformat(data_copy['created_at'])

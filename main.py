@@ -3,6 +3,7 @@ Main FastAPI Application
 Entry point for AI Radio Presenter system
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=10000,
+        port=int(os.getenv("PORT", "10000")),
         reload=CONFIG.debug,
         log_level=CONFIG.broadcast.log_level.lower(),
     )

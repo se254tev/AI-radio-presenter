@@ -6,7 +6,7 @@ Handles language-specific voice selection and streaming
 import logging
 import asyncio
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any
 from abc import ABC, abstractmethod
 import httpx
 import os
@@ -27,7 +27,7 @@ class AudioOutput:
     voice_id: str = ""
     sample_rate: int = 24000
     format: str = "mp3"
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] | None = None
     
     def __post_init__(self):
         if self.metadata is None:
@@ -176,7 +176,7 @@ class TTSEngine:
         self.api_key = api_key
         self.provider = provider
         self.tts_client = None
-        self.audio_cache: Dict[str, bytes] = {}
+        self.audio_cache: dict[str, bytes] = {}
         self.logger = logging.getLogger(__name__)
         
         if provider == "elevenlabs":
@@ -287,7 +287,7 @@ class TTSEngine:
             }
         )
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get audio cache statistics"""
         total_size = sum(len(audio) for audio in self.audio_cache.values())
         return {

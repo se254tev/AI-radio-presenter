@@ -6,7 +6,7 @@ Orchestrates: Timing, Director decisions, LLM generation, TTS, and State managem
 import logging
 import asyncio
 from datetime import datetime, timedelta
-from typing import Optional, Callable, Dict, Any
+from typing import Callable, Any
 from enum import Enum
 
 from .show_planner import ShowPlan, SegmentType
@@ -64,7 +64,7 @@ class BroadcastLoop:
         self,
         show_plan: ShowPlan,
         state_engine: StateEngine,
-        event_callback: Optional[Callable] = None,
+        event_callback: Callable | None = None,
     ):
         """
         Initialize broadcast loop
@@ -83,12 +83,12 @@ class BroadcastLoop:
         self.music_queue = MusicQueue()
         self.music_queue.event_callback = self._on_music_event
         
-        self.state: Optional[ShowState] = None
+        self.state: ShowState | None = None
         self.is_running = False
         self.is_paused = False
         self.logger = logging.getLogger(__name__)
         
-        self.loop_task: Optional[asyncio.Task] = None
+        self.loop_task: asyncio.Task | None = None
     
     async def initialize_show(self) -> ShowState:
         """
@@ -293,7 +293,7 @@ class BroadcastLoop:
         finally:
             await self.state_engine.save_state(self.state)
 
-    async def _on_music_event(self, event_type: str, payload: Dict[str, Any]):
+    async def _on_music_event(self, event_type: str, payload: dict[str, Any]):
         """Forward music queue events to websocket manager in unified format."""
         try:
             await ws_manager.broadcast_event("music", {"event": event_type, **(payload or {})})
@@ -566,7 +566,7 @@ class BroadcastLoop:
             }
         )
     
-    async def _emit_event(self, event_type: BroadcastLoopEvent, data: Dict[str, Any]):
+    async def _emit_event(self, event_type: BroadcastLoopEvent, data: dict[str, Any]):
         """Emit broadcast event"""
         if self.event_callback:
             try:
@@ -574,7 +574,7 @@ class BroadcastLoop:
             except Exception as e:
                 self.logger.error(f"Error in event callback: {e}")
     
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current broadcast status"""
         if not self.state:
             return {"status": "not_initialized"}

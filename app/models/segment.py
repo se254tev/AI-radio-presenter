@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 
 class SegmentType(str, Enum):
@@ -38,17 +38,17 @@ class Segment:
     priority: int = 1
     is_flexible: bool = False
     optional: bool = False
-    requires_context: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    requires_context: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["segment_type"] = self.segment_type.value
         data["mood"] = self.mood.value
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Segment":
+    def from_dict(cls, data: dict[str, Any]) -> "Segment":
         data_copy = data.copy()
         data_copy["segment_type"] = SegmentType(data_copy["segment_type"])
         data_copy["mood"] = Mood(data_copy["mood"])

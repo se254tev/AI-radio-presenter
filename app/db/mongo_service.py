@@ -2,7 +2,7 @@
 Async MongoDB connection management with health checks
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 import asyncio
 
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 class MongoService:
     """Async MongoDB connection manager with retry logic and health checks."""
     
-    def __init__(self, uri: Optional[str] = None, db_name: Optional[str] = None):
+    def __init__(self, uri: str | None = None, db_name: str | None = None):
         self.uri = uri or CONFIG.mongo.mongo_uri
         self.db_name = db_name or CONFIG.mongo.mongo_db
-        self.client: Optional[AsyncIOMotorClient] = None
+        self.client: AsyncIOMotorClient | None = None
         self.db = None
         self.healthy = False
 
@@ -87,7 +87,7 @@ class MongoService:
         except Exception as e:
             logger.error(f"Error closing MongoDB connection: {e}")
 
-    async def insert_one(self, collection: str, document: Dict[str, Any]) -> Any:
+    async def insert_one(self, collection: str, document: dict[str, Any]) -> Any:
         """Insert a single document into collection."""
         try:
             if not self.db:
@@ -99,7 +99,7 @@ class MongoService:
             logger.error(f"Failed to insert into {collection}: {e}")
             raise
 
-    async def find(self, collection: str, filter: Dict[str, Any], limit: int = 100) -> List[Dict[str, Any]]:
+    async def find(self, collection: str, filter: dict[str, Any], limit: int = 100) -> list[dict[str, Any]]:
         """Find documents in collection."""
         try:
             if not self.db:
@@ -111,7 +111,7 @@ class MongoService:
             logger.error(f"Failed to find in {collection}: {e}")
             return []
 
-    async def update_one(self, collection: str, filter: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_one(self, collection: str, filter: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
         """Update a single document in collection."""
         try:
             if not self.db:
@@ -123,7 +123,7 @@ class MongoService:
             logger.error(f"Failed to update in {collection}: {e}")
             raise
 
-    async def delete_one(self, collection: str, filter: Dict[str, Any]) -> Dict[str, Any]:
+    async def delete_one(self, collection: str, filter: dict[str, Any]) -> dict[str, Any]:
         """Delete a single document from collection."""
         try:
             if not self.db:

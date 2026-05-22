@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from .segment import Segment
 
@@ -12,19 +12,19 @@ class ShowPlan:
     show_name: str
     total_duration: int
     created_at: datetime = field(default_factory=datetime.utcnow)
-    planned_start_time: Optional[datetime] = None
-    segments: List[Segment] = field(default_factory=list)
+    planned_start_time: datetime | None = None
+    segments: list[Segment] = field(default_factory=list)
     primary_language: str = "english"
     secondary_language: str = "swahili"
     code_switching_enabled: bool = True
     target_audience: str = "general"
     theme: str = "contemporary"
     host_personality: str = "friendly, knowledgeable, energetic"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     buffer_seconds: int = 30
     version: str = "1.0"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
         data["planned_start_time"] = self.planned_start_time.isoformat() if self.planned_start_time else None
@@ -32,7 +32,7 @@ class ShowPlan:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ShowPlan":
+    def from_dict(cls, data: dict[str, Any]) -> "ShowPlan":
         data_copy = data.copy()
         data_copy["created_at"] = datetime.fromisoformat(data_copy["created_at"])
         if data_copy.get("planned_start_time"):
@@ -56,10 +56,10 @@ class ShowPlan:
     def total_segment_duration(self) -> int:
         return sum(segment.duration for segment in self.segments)
 
-    def get_segment_by_index(self, index: int) -> Optional[Segment]:
+    def get_segment_by_index(self, index: int) -> Segment | None:
         if 0 <= index < len(self.segments):
             return self.segments[index]
         return None
 
-    def get_segments_by_type(self, segment_type: str) -> List[Segment]:
+    def get_segments_by_type(self, segment_type: str) -> list[Segment]:
         return [segment for segment in self.segments if segment.segment_type.value == segment_type]

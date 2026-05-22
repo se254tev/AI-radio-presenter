@@ -5,7 +5,7 @@ Provides endpoints for managing shows and broadcasts
 import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+
 
 from ..services.radio_service import get_radio_service
 
@@ -18,7 +18,7 @@ class CreateShowRequest(BaseModel):
     """Request to create a new show plan"""
     duration_hours: float
     show_name: str = "AI Radio Show"
-    template: Optional[str] = None
+    template: str | None = None
     primary_language: str = "english"
     target_audience: str = "general"
     theme: str = "contemporary"

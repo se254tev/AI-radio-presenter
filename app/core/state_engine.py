@@ -6,7 +6,7 @@ Supports Redis with in-memory fallback
 import json
 import logging
 import asyncio
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 from app.config.settings import CONFIG
 from app.models.show import ShowPlan
@@ -58,7 +58,7 @@ class StateEngine:
                 logger.error(f"Failed to save state for {state.show_id}: {exc}")
                 return False
 
-    async def load_state(self, show_id: str) -> Optional[ShowState]:
+    async def load_state(self, show_id: str) -> ShowState | None:
         async with self._lock:
             try:
                 key = f"show_state:{show_id}"
@@ -86,7 +86,7 @@ class StateEngine:
                 logger.error(f"Failed to delete state for {show_id}: {exc}")
                 return False
 
-    async def list_active_shows(self) -> List[str]:
+    async def list_active_shows(self) -> list[str]:
         async with self._lock:
             try:
                 if self.redis_client:
@@ -112,7 +112,7 @@ class StateEngine:
                 logger.error(f"Failed to save show plan {show_plan.show_id}: {exc}")
                 return False
 
-    async def load_show_plan(self, show_id: str) -> Optional[ShowPlan]:
+    async def load_show_plan(self, show_id: str) -> ShowPlan | None:
         async with self._lock:
             try:
                 key = f"show_plan:{show_id}"

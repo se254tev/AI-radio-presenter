@@ -1,13 +1,13 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import Callable, Dict, Optional, Any
+from typing import Callable, Any
 
 
 class SchedulerEngine:
     """External timing engine for scheduled starts and runtime segment waits."""
 
     def __init__(self):
-        self.scheduled_tasks: Dict[str, asyncio.Task] = {}
+        self.scheduled_tasks: dict[str, asyncio.Task] = {}
 
     async def wait(self, duration_seconds: float) -> None:
         """Wait for a duration without blocking the event loop."""

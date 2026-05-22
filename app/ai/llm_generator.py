@@ -7,7 +7,7 @@ Uses structured prompt engineering for consistency
 import logging
 import json
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Any
 import httpx
 import asyncio
 
@@ -25,14 +25,14 @@ class SegmentPromptContext:
     humor_level: float
     energy_level: float
     audience_size: int
-    listener_messages: List[str] = None
-    current_song: Optional[Dict[str, Any]] = None
-    recent_topics: List[str] = None
+    listener_messages: list[str] | None = None
+    current_song: dict[str, Any | None] | None = None
+    recent_topics: list[str] | None = None
     host_personality: str = ""
     target_audience: str = ""
     code_switching_enabled: bool = False
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "segment_type": self.segment_type,
             "segment_title": self.segment_title,
@@ -57,7 +57,7 @@ class SegmentScript:
     duration_estimate: int  # seconds
     language: str
     mood: str
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] | None = None
     
     def __post_init__(self):
         if self.metadata is None:
@@ -373,7 +373,7 @@ class LLMGenerator:
             }
         )
 
-    async def generate_dj_line(self, context: SegmentPromptContext) -> Dict[str, Any]:
+    async def generate_dj_line(self, context: SegmentPromptContext) -> dict[str, Any]:
         """Generate a short DJ line suitable for interrupting music.
 
         Returns structured output:

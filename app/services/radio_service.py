@@ -2,7 +2,7 @@
 Radio Service - High-level service orchestrating all broadcast components
 """
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 
 from ..core.runtime_manager import RuntimeManager
 from ..core.show_planner import ShowPlanner, ShowPlan
@@ -32,10 +32,10 @@ class RadioService:
             scheduler_engine=self.scheduler_engine,
             stream_manager=self.stream_manager,
         )
-        self.show_plans: Dict[str, ShowPlan] = {}
+        self.show_plans: dict[str, ShowPlan] = {}
         self.logger = logging.getLogger(__name__)
 
-    async def initialize(self, config: Dict[str, Any]):
+    async def initialize(self, config: dict[str, Any]):
         """
         Initialize service with configuration
 
@@ -55,7 +55,7 @@ class RadioService:
         self,
         duration_hours: float,
         show_name: str = "AI Radio Show",
-        template: Optional[str] = None,
+        template: str | None = None,
         primary_language: str = "english",
         target_audience: str = "general",
         theme: str = "contemporary",
@@ -89,13 +89,13 @@ class RadioService:
         self.logger.info(f"Created show plan: {show_plan.show_id}")
         return show_plan
 
-    async def get_show_plan(self, show_id: str) -> Optional[ShowPlan]:
+    async def get_show_plan(self, show_id: str) -> ShowPlan | None:
         """Retrieve a saved show plan"""
         if show_id in self.show_plans:
             return self.show_plans[show_id]
         return await self.state_engine.load_show_plan(show_id)
 
-    async def start_show(self, show_id: str, event_callback=None) -> Optional[str]:
+    async def start_show(self, show_id: str, event_callback=None) -> str | None:
         """
         Start a show immediately from an existing plan
 
@@ -104,7 +104,7 @@ class RadioService:
             event_callback: Optional async callback for runtime events
 
         Returns:
-            Optional[str]: Started show ID or None if not found
+            str | None: Started show ID or None if not found
         """
         show_plan = await self.get_show_plan(show_id)
         if not show_plan:
@@ -112,7 +112,7 @@ class RadioService:
 
         return await self.runtime_manager.start_show(show_plan)
 
-    async def schedule_show(self, show_name: str, duration_hours: float, start_time, template: Optional[str] = None,
+    async def schedule_show(self, show_name: str, duration_hours: float, start_time, template: str | None = None,
                             primary_language: str = "english", target_audience: str = "general", theme: str = "contemporary") -> str:
         """
         Create and schedule a show for a future time.
@@ -139,21 +139,21 @@ class RadioService:
         """Resume a paused show"""
         return await self.runtime_manager.resume_show(show_id)
 
-    async def get_show_state(self, show_id: str) -> Optional[Dict[str, Any]]:
+    async def get_show_state(self, show_id: str) -> dict[str, Any | None]:
         """Get current or persisted show state"""
         return await self.runtime_manager.get_show_state(show_id)
 
-    async def get_show_history(self, show_id: str) -> Optional[Dict[str, Any]]:
+    async def get_show_history(self, show_id: str) -> dict[str, Any | None]:
         """Get historical state of a show"""
         return await self.runtime_manager.get_show_history(show_id)
 
-    async def list_active_shows(self) -> Dict[str, Any]:
+    async def list_active_shows(self) -> dict[str, Any]:
         """List currently active shows"""
         return await self.runtime_manager.list_active_shows()
 
 
 # Global service instance
-_radio_service: Optional[RadioService] = None
+_radio_service: RadioService | None = None
 
 
 def get_radio_service() -> RadioService:
@@ -164,7 +164,7 @@ def get_radio_service() -> RadioService:
     return _radio_service
 
 
-def initialize_radio_service(config: Dict[str, Any]) -> RadioService:
+def initialize_radio_service(config: dict[str, Any]) -> RadioService:
     """Initialize radio service"""
     global _radio_service
     _radio_service = RadioService()

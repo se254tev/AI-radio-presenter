@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ class STTEngine:
         self.provider = provider
         self.logger = logging.getLogger(__name__)
 
-    async def transcribe(self, audio_data: bytes, language: str = "english") -> Dict[str, Any]:
+    async def transcribe(self, audio_data: bytes, language: str = "english") -> dict[str, Any]:
         """Transcribe audio data to text."""
         self.logger.info(f"Transcribing audio in {language} using {self.provider}")
         return {

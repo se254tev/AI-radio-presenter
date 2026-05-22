@@ -1,7 +1,7 @@
 """
 Production REST API routes for AI Radio system
 """
-from typing import Dict, Any, Optional
+from typing import Any
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
@@ -19,7 +19,7 @@ class TrackModel(BaseModel):
     title: str
     artist: str
     duration: int
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class QueueStatusResponse(BaseModel):
@@ -27,23 +27,23 @@ class QueueStatusResponse(BaseModel):
     backend: str
     queue_size: int
     max_size: int
-    current_track: Optional[TrackModel] = None
-    next_track: Optional[TrackModel] = None
+    current_track: TrackModel | None = None
+    next_track: TrackModel | None = None
 
 
 class RadioStatusResponse(BaseModel):
     """Radio show status"""
     status: str
-    current_track: Optional[TrackModel] = None
+    current_track: TrackModel | None = None
     queue_size: int
     active_listeners: int
-    show_metadata: Dict[str, Any] = {}
+    show_metadata: dict[str, Any] = {}
 
 
 class AIResponseModel(BaseModel):
     """AI DJ response"""
     response: str
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
 
 # ============= State (injected from main.py) =============
@@ -57,7 +57,7 @@ class RadioAppState:
 
 # ============= Radio Control Endpoints =============
 @router.post("/radio/play")
-async def play_radio() -> Dict[str, str]:
+async def play_radio() -> dict[str, str]:
     """Start radio playback"""
     logger.info("Radio playback started")
     return {
@@ -67,7 +67,7 @@ async def play_radio() -> Dict[str, str]:
 
 
 @router.post("/radio/pause")
-async def pause_radio() -> Dict[str, str]:
+async def pause_radio() -> dict[str, str]:
     """Pause radio playback"""
     logger.info("Radio playback paused")
     return {
@@ -77,7 +77,7 @@ async def pause_radio() -> Dict[str, str]:
 
 
 @router.post("/radio/stop")
-async def stop_radio() -> Dict[str, str]:
+async def stop_radio() -> dict[str, str]:
     """Stop radio playback"""
     logger.info("Radio playback stopped")
     return {
@@ -102,7 +102,7 @@ async def get_radio_status() -> RadioStatusResponse:
 
 # ============= Queue Management =============
 @router.post("/radio/queue/add")
-async def add_to_queue(track: TrackModel) -> Dict[str, Any]:
+async def add_to_queue(track: TrackModel) -> dict[str, Any]:
     """Add track to queue"""
     logger.info(f"Track added to queue: {track.title}")
     return {
@@ -112,7 +112,7 @@ async def add_to_queue(track: TrackModel) -> Dict[str, Any]:
 
 
 @router.get("/radio/queue")
-async def get_queue(limit: int = Query(50, ge=1, le=100)) -> Dict[str, Any]:
+async def get_queue(limit: int = Query(50, ge=1, le=100)) -> dict[str, Any]:
     """Get current queue"""
     return {
         "queue": [],
@@ -132,14 +132,14 @@ async def get_queue_status() -> QueueStatusResponse:
 
 
 @router.post("/radio/queue/clear")
-async def clear_queue() -> Dict[str, str]:
+async def clear_queue() -> dict[str, str]:
     """Clear the music queue"""
     logger.info("Queue cleared")
     return {"status": "cleared"}
 
 
 @router.get("/radio/queue/current")
-async def get_current_track() -> Dict[str, Any]:
+async def get_current_track() -> dict[str, Any]:
     """Get currently playing track"""
     return {
         "track": None,
@@ -148,7 +148,7 @@ async def get_current_track() -> Dict[str, Any]:
 
 
 @router.post("/radio/queue/skip")
-async def skip_track() -> Dict[str, str]:
+async def skip_track() -> dict[str, str]:
     """Skip to next track"""
     logger.info("Track skipped")
     return {"status": "skipped"}
@@ -166,7 +166,7 @@ async def send_dj_message(message: str = Query(..., min_length=1, max_length=500
 
 
 @router.get("/radio/dj/intro")
-async def get_show_intro(show_name: str = Query("AI Radio")) -> Dict[str, str]:
+async def get_show_intro(show_name: str = Query("AI Radio")) -> dict[str, str]:
     """Get AI-generated show intro"""
     logger.info(f"Generated intro for: {show_name}")
     return {
@@ -178,7 +178,7 @@ async def get_show_intro(show_name: str = Query("AI Radio")) -> Dict[str, str]:
 async def get_transition(
     current_track: str = Query(...),
     next_track: str = Query(...),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Get AI-generated track transition"""
     logger.info(f"Transition: {current_track} -> {next_track}")
     return {
@@ -188,7 +188,7 @@ async def get_transition(
 
 # ============= Show Management =============
 @router.get("/radio/shows")
-async def list_shows() -> Dict[str, Any]:
+async def list_shows() -> dict[str, Any]:
     """List all scheduled shows"""
     return {
         "shows": [],
@@ -197,7 +197,7 @@ async def list_shows() -> Dict[str, Any]:
 
 
 @router.post("/radio/shows")
-async def create_show(show_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_show(show_data: dict[str, Any]) -> dict[str, Any]:
     """Create new scheduled show"""
     logger.info(f"Show created: {show_data}")
     return {
@@ -207,7 +207,7 @@ async def create_show(show_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.get("/radio/shows/{show_id}")
-async def get_show(show_id: str) -> Dict[str, Any]:
+async def get_show(show_id: str) -> dict[str, Any]:
     """Get specific show details"""
     return {
         "show_id": show_id,
@@ -218,7 +218,7 @@ async def get_show(show_id: str) -> Dict[str, Any]:
 
 # ============= Listener Stats =============
 @router.get("/radio/listeners/count")
-async def get_listener_count() -> Dict[str, int]:
+async def get_listener_count() -> dict[str, int]:
     """Get current listener count"""
     return {
         "active_listeners": 0,
@@ -227,7 +227,7 @@ async def get_listener_count() -> Dict[str, int]:
 
 
 @router.get("/radio/listeners/stats")
-async def get_listener_stats() -> Dict[str, Any]:
+async def get_listener_stats() -> dict[str, Any]:
     """Get listener statistics"""
     return {
         "active": 0,

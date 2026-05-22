@@ -1,4 +1,4 @@
-from typing import List, Optional
+
 from .llm_generator import SegmentPromptContext
 
 
@@ -139,7 +139,7 @@ Only output raw script content. No meta-commentary. No markers. Just the speech.
 
         @staticmethod
         def personality_summary(
-                energy_level: float, mood: str, context_desc: Optional[str] = None
+                energy_level: float, mood: str, context_desc: str | None = None
         ) -> str:
                 """Return a short personality summary for the LLM to adopt."""
                 if energy_level >= 0.75:

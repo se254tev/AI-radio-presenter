@@ -2,11 +2,15 @@
 Enhanced health and monitoring endpoints
 """
 import logging
-import psutil
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import APIRouter, Request
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover
+    psutil = None
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +18,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_check() -> Dict[str, str]:
+async def health_check() -> dict[str, str]:
     """Basic health check"""
     return {
         "status": "healthy",
@@ -23,8 +27,15 @@ async def health_check() -> Dict[str, str]:
 
 
 @router.get("/health/detailed")
-async def detailed_health() -> Dict[str, Any]:
+async def detailed_health() -> dict[str, Any]:
     """Detailed system health check with resource usage"""
+    if not psutil:
+        return {
+            "status": "degraded",
+            "error": "psutil is not installed",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
     try:
         process = psutil.Process()
         cpu_percent = process.cpu_percent(interval=0.1)
@@ -58,7 +69,7 @@ async def detailed_health() -> Dict[str, Any]:
 
 
 @router.get("/health/ready")
-async def readiness_check() -> Dict[str, Any]:
+async def readiness_check() -> dict[str, Any]:
     """Kubernetes/Render readiness probe"""
     return {
         "ready": True,
@@ -67,7 +78,7 @@ async def readiness_check() -> Dict[str, Any]:
 
 
 @router.get("/health/live")
-async def liveness_check() -> Dict[str, Any]:
+async def liveness_check() -> dict[str, Any]:
     """Kubernetes/Render liveness probe"""
     return {
         "alive": True,
@@ -76,7 +87,7 @@ async def liveness_check() -> Dict[str, Any]:
 
 
 @router.get("/metrics/queue")
-async def queue_metrics() -> Dict[str, Any]:
+async def queue_metrics() -> dict[str, Any]:
     """Queue metrics endpoint"""
     return {
         "queue_size": 0,
@@ -87,7 +98,7 @@ async def queue_metrics() -> Dict[str, Any]:
 
 
 @router.get("/metrics/listeners")
-async def listener_metrics() -> Dict[str, Any]:
+async def listener_metrics() -> dict[str, Any]:
     """Listener metrics endpoint"""
     return {
         "active_listeners": 0,
@@ -98,7 +109,7 @@ async def listener_metrics() -> Dict[str, Any]:
 
 
 @router.get("/metrics/ai")
-async def ai_metrics() -> Dict[str, Any]:
+async def ai_metrics() -> dict[str, Any]:
     """AI DJ metrics endpoint"""
     return {
         "ai_status": "operational",
@@ -110,7 +121,7 @@ async def ai_metrics() -> Dict[str, Any]:
 
 
 @router.get("/health/databases")
-async def database_health(request: Request) -> Dict[str, Any]:
+async def database_health(request: Request) -> dict[str, Any]:
     """Database connectivity health check"""
     app = request.app
     
@@ -123,8 +134,7 @@ async def database_health(request: Request) -> Dict[str, Any]:
     # Check Postgres
     try:
         if hasattr(app.state, 'postgres') and app.state.postgres:
-            # Simple ping
-            await app.state.postgres.client.connection.cursor().execute("SELECT 1")
+            await app.state.postgres.fetchrow("SELECT 1")
             database_status["postgres"] = "connected"
     except Exception as e:
         logger.warning(f"Postgres health check failed: {e}")

@@ -5,7 +5,7 @@ Provides live streaming of radio events to connected listeners
 import logging
 import json
 from datetime import datetime
-from typing import Set, Dict, Any
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 import json as _json
@@ -18,9 +18,9 @@ class ConnectionManager:
     """Manages WebSocket connections for broadcasting"""
 
     def __init__(self):
-        self.active_connections: Set[WebSocket] = set()
-        self.connection_metadata: Dict[WebSocket, Dict[str, Any]] = {}
-        self.recent_chats: List[Dict[str, Any]] = []
+        self.active_connections: set[WebSocket] = set()
+        self.connection_metadata: dict[WebSocket, dict[str, Any]] = {}
+        self.recent_chats: list[dict[str, Any]] = []
 
     async def connect(self, websocket: WebSocket, client_id: str = "") -> None:
         """Register a new WebSocket connection"""
@@ -41,7 +41,7 @@ class ConnectionManager:
             f"Client disconnected: {client_id} (total: {len(self.active_connections)})"
         )
 
-    async def broadcast(self, message: Dict[str, Any]) -> None:
+    async def broadcast(self, message: dict[str, Any]) -> None:
         """Broadcast message to all connected clients"""
         disconnected = set()
         for connection in self.active_connections:
@@ -55,7 +55,7 @@ class ConnectionManager:
         for conn in disconnected:
             self.disconnect(conn)
 
-    def add_chat(self, chat: Dict[str, Any]) -> None:
+    def add_chat(self, chat: dict[str, Any]) -> None:
         """Store recent chat messages in-memory for quick consumption by director/AI."""
         try:
             self.recent_chats.insert(0, chat)
@@ -64,11 +64,11 @@ class ConnectionManager:
         except Exception:
             pass
 
-    def get_recent_chats(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_chats(self, limit: int = 10) -> list[dict[str, Any]]:
         return list(self.recent_chats[:limit])
 
     async def broadcast_track_update(
-        self, track: Dict[str, Any], event_type: str = "track_changed"
+        self, track: dict[str, Any], event_type: str = "track_changed"
     ) -> None:
         """Broadcast track update to all listeners"""
         await self.broadcast_event("music", {"event": event_type, "track": track})
@@ -77,11 +77,11 @@ class ConnectionManager:
         """Broadcast AI DJ message"""
         await self.broadcast_event("ai_speech", {"text": text})
 
-    async def broadcast_status(self, status: Dict[str, Any]) -> None:
+    async def broadcast_status(self, status: dict[str, Any]) -> None:
         """Broadcast system status update"""
         await self.broadcast_event("announcement", {"status": status})
 
-    async def broadcast_event(self, event_type: str, payload: Dict[str, Any]) -> None:
+    async def broadcast_event(self, event_type: str, payload: dict[str, Any]) -> None:
         """Broadcast unified event format to all listeners.
 
         Event format:
@@ -96,7 +96,7 @@ class ConnectionManager:
         await self.broadcast(message)
 
     async def send_personal_message(
-        self, message: Dict[str, Any], websocket: WebSocket
+        self, message: dict[str, Any], websocket: WebSocket
     ) -> None:
         """Send message to specific connection"""
         try:
@@ -109,7 +109,7 @@ class ConnectionManager:
         """Get number of active listeners"""
         return len(self.active_connections)
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """Get connection manager status"""
         return {
             "active_listeners": self.get_listener_count(),

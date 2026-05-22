@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -11,13 +11,13 @@ router = APIRouter(prefix="/api/v1/radio/shows", tags=["shows"])
 
 
 class ShowControlRequest(BaseModel):
-    duration_hours: Optional[float] = Field(None, gt=0)
-    show_name: Optional[str] = "AI Radio Show"
-    template: Optional[str] = None
-    primary_language: Optional[str] = "english"
-    target_audience: Optional[str] = "general"
-    theme: Optional[str] = "contemporary"
-    scheduled_start: Optional[datetime] = None
+    duration_hours: float | None = Field(None, gt=0)
+    show_name: str | None = "AI Radio Show"
+    template: str | None = None
+    primary_language: str | None = "english"
+    target_audience: str | None = "general"
+    theme: str | None = "contemporary"
+    scheduled_start: datetime | None = None
 
 
 class ControlAction(BaseModel):

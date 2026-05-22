@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Any
 
 from .broadcast_loop import BroadcastLoop
 from .state_engine import StateEngine
@@ -29,7 +29,7 @@ class RuntimeManager:
         self.llm_generator = get_llm_generator()
         self.tts_engine = get_tts_engine()
         self.show_planner = ShowPlanner()
-        self.active_runs: Dict[str, BroadcastLoop] = {}
+        self.active_runs: dict[str, BroadcastLoop] = {}
         self.logger = logging.getLogger(__name__)
 
     async def start_show(self, show_plan: ShowPlan) -> str:
@@ -93,7 +93,7 @@ class RuntimeManager:
             return False
         return await broadcast.resume_broadcast()
 
-    async def get_show_state(self, show_id: str) -> Optional[Dict[str, Any]]:
+    async def get_show_state(self, show_id: str) -> dict[str, Any | None]:
         if show_id in self.active_runs:
             return self.active_runs[show_id].get_status()
         show_state = await self.state_engine.load_state(show_id)
@@ -112,7 +112,7 @@ class RuntimeManager:
             "language": show_state.current_language,
         }
 
-    async def get_show_history(self, show_id: str) -> Optional[Dict[str, Any]]:
+    async def get_show_history(self, show_id: str) -> dict[str, Any | None]:
         show_state = await self.state_engine.load_state(show_id)
         if not show_state:
             return None
@@ -124,7 +124,7 @@ class RuntimeManager:
             "audience_metrics": show_state.audience_metrics.to_dict(),
         }
 
-    async def list_active_shows(self) -> Dict[str, Any]:
+    async def list_active_shows(self) -> dict[str, Any]:
         return {
             show_id: broadcast.get_status()
             for show_id, broadcast in self.active_runs.items()

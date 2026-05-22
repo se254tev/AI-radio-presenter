@@ -2,7 +2,7 @@
 """
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import asyncpg
 
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 class PostgresService:
     """Simple async Postgres service using asyncpg pool."""
 
-    def __init__(self, dsn: Optional[str] = None, min_size: int = 1, max_size: int = 10):
+    def __init__(self, dsn: str | None = None, min_size: int = 1, max_size: int = 10):
         self.dsn = dsn or CONFIG.database.database_url
         self.min_size = min_size
         self.max_size = max_size
-        self.pool: Optional[asyncpg.pool.Pool] = None
+        self.pool: asyncpg.pool.Pool | None = None
 
     async def initialize(self, retries: int = 3, delay: float = 2.0) -> None:
         attempt = 0
@@ -38,40 +38,40 @@ class PostgresService:
             await self.pool.close()
             logger.info("Postgres pool closed")
 
-    async def execute(self, query: str, *args, timeout: Optional[float] = None) -> str:
+    async def execute(self, query: str, *args, timeout: float | None = None) -> str:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 return await conn.execute(query, *args)
 
-    async def fetch(self, query: str, *args) -> List[asyncpg.Record]:
+    async def fetch(self, query: str, *args) -> list[asyncpg.Record]:
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)
 
-    async def fetchrow(self, query: str, *args) -> Optional[asyncpg.Record]:
+    async def fetchrow(self, query: str, *args) -> asyncpg.Record | None:
         async with self.pool.acquire() as conn:
             return await conn.fetchrow(query, *args)
 
     # Convenience CRUD helpers (simple implementations)
-    async def insert(self, table: str, data: Dict[str, Any]) -> Any:
+    async def insert(self, table: str, data: dict[str, Any]) -> Any:
         keys = ", ".join(data.keys())
         placeholders = ", ".join(f"${i+1}" for i in range(len(data)))
         query = f"INSERT INTO {table} ({keys}) VALUES ({placeholders}) RETURNING *"
         values = list(data.values())
         return await self.fetchrow(query, *values)
 
-    async def select(self, table: str, where: str = "", params: List[Any] = None) -> List[asyncpg.Record]:
+    async def select(self, table: str, where: str = "", params: list[Any] | None = None) -> list[asyncpg.Record]:
         query = f"SELECT * FROM {table}"
         if where:
             query += f" WHERE {where}"
         return await self.fetch(query, *(params or []))
 
-    async def update(self, table: str, set_clause: str, where: str = "", params: List[Any] = None) -> Any:
+    async def update(self, table: str, set_clause: str, where: str = "", params: list[Any] | None = None) -> Any:
         query = f"UPDATE {table} SET {set_clause}"
         if where:
             query += f" WHERE {where}"
         return await self.execute(query, *(params or []))
 
-    async def delete(self, table: str, where: str = "", params: List[Any] = None) -> Any:
+    async def delete(self, table: str, where: str = "", params: list[Any] | None = None) -> Any:
         query = f"DELETE FROM {table}"
         if where:
             query += f" WHERE {where}"

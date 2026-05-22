@@ -5,7 +5,7 @@ Uses redis.asyncio for async operations with rediss:// protocol for cloud endpoi
 
 import asyncio
 import logging
-from typing import Optional
+
 from app.config.settings import CONFIG
 
 try:
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class RedisService:
     """Async Redis connection manager with retry logic and TLS support."""
 
-    def __init__(self, url: Optional[str] = None):
+    def __init__(self, url: str | None = None):
         """
         Initialize Redis service.
         
@@ -31,7 +31,7 @@ class RedisService:
             logger.warning("redis[asyncio] not installed. Redis service will be disabled.")
         
         self.url = url or CONFIG.redis.redis_url
-        self.client: Optional[redis.Redis] = None
+        self.client: redis.Redis | None = None
 
     async def initialize(self, retries: int = 3, delay: float = 1.5):
         """
@@ -58,7 +58,7 @@ class RedisService:
                 
                 # Parse URL and create connection
                 # rediss:// protocol enables TLS
-                self.client = await redis.from_url(
+                self.client = redis.from_url(
                     self.url,
                     decode_responses=True,
                     encoding="utf-8",
@@ -93,7 +93,7 @@ class RedisService:
             except Exception as e:
                 logger.error(f"Error closing Redis connection: {e}")
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Get value by key."""
         if not self.client:
             return None
@@ -103,7 +103,7 @@ class RedisService:
             logger.error(f"Redis GET error for key '{key}': {e}")
             return None
 
-    async def set(self, key: str, value: str, ex: Optional[int] = None):
+    async def set(self, key: str, value: str, ex: int | None = None):
         """
         Set key-value pair with optional expiration.
         
@@ -132,7 +132,7 @@ class RedisService:
             logger.error(f"Redis DELETE error for key '{key}': {e}")
             return False
 
-    async def hget(self, name: str, key: str) -> Optional[str]:
+    async def hget(self, name: str, key: str) -> str | None:
         """Get value from hash."""
         if not self.client:
             return None
@@ -153,7 +153,7 @@ class RedisService:
             logger.error(f"Redis HSET error for hash '{name}': {e}")
             return False
 
-    async def incr(self, key: str) -> Optional[int]:
+    async def incr(self, key: str) -> int | None:
         """Increment counter."""
         if not self.client:
             return None

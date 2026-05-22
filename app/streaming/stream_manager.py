@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 from ..voice.tts_engine import AudioOutput
 
 logger = logging.getLogger(__name__)
@@ -10,9 +10,9 @@ class StreamManager:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.active_streams: Dict[str, Dict[str, Any]] = {}
+        self.active_streams: dict[str, dict[str, Any]] = {}
 
-    async def stream_audio(self, audio_output: AudioOutput) -> Dict[str, Any]:
+    async def stream_audio(self, audio_output: AudioOutput) -> dict[str, Any]:
         """Stream audio for a segment and return a playback reference."""
         self.logger.info(
             f"Streaming audio for segment {audio_output.segment_id} "
@@ -38,6 +38,6 @@ class StreamManager:
             return True
         return False
 
-    async def get_stream_status(self, segment_id: str) -> Dict[str, Any]:
+    async def get_stream_status(self, segment_id: str) -> dict[str, Any]:
         """Get the stream status for a given segment."""
         return self.active_streams.get(segment_id, {})

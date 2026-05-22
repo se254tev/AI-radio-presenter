@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
-from typing import Optional
+
 from pathlib import Path
 
 
@@ -21,9 +21,9 @@ class RedisConfig(BaseSettings):
 
 
 class DatabaseConfig(BaseSettings):
-    database_url: Optional[str] = Field(None, env="DATABASE_URL")
-    supabase_url: Optional[str] = Field(None, env="SUPABASE_URL")
-    supabase_key: Optional[str] = Field(None, env="SUPABASE_KEY")
+    database_url: str | None = Field(None, env="DATABASE_URL")
+    supabase_url: str | None = Field(None, env="SUPABASE_URL")
+    supabase_key: str | None = Field(None, env="SUPABASE_KEY")
 
     model_config = {"env_prefix": ""}
 
@@ -36,10 +36,10 @@ class MongoConfig(BaseSettings):
 
 
 class APIConfig(BaseSettings):
-    openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY")
+    openai_api_key: str | None = Field(None, env="OPENAI_API_KEY")
     openai_model: str = Field("gpt-4-turbo", env="OPENAI_MODEL")
     openai_temperature: float = Field(0.7, env="OPENAI_TEMPERATURE")
-    elevenlabs_api_key: Optional[str] = Field(None, env="ELEVENLABS_API_KEY")
+    elevenlabs_api_key: str | None = Field(None, env="ELEVENLABS_API_KEY")
     elevenlabs_voice_id: str = Field("default", env="ELEVENLABS_VOICE_ID")
 
     model_config = {"env_prefix": ""}

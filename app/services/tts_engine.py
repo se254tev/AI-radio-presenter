@@ -2,7 +2,7 @@
 TTS Pipeline Service - Text-to-Speech with ElevenLabs and fallback support
 """
 import logging
-from typing import Optional, AsyncIterator
+from typing import AsyncIterator
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class TTSEngine:
         except Exception as e:
             logger.error(f"Failed to initialize ElevenLabs: {e}")
 
-    async def synthesize(self, text: str, voice_id: Optional[str] = None) -> bytes:
+    async def synthesize(self, text: str, voice_id: str | None = None) -> bytes:
         """
         Synthesize text to audio bytes
 
@@ -62,7 +62,7 @@ class TTSEngine:
             return b"mock_audio_data"
 
     async def stream_synthesize(
-        self, text: str, voice_id: Optional[str] = None
+        self, text: str, voice_id: str | None = None
     ) -> AsyncIterator[bytes]:
         """
         Stream TTS audio in chunks (useful for real-time delivery)

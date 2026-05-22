@@ -2,7 +2,7 @@
 AI DJ Service - LLM-based radio host with context memory
 """
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -124,12 +124,12 @@ class AIRadioHost:
             logger.error(f"Failed to generate response: {e}")
             return "Thanks for the message!"
 
-    def update_context(self, updates: Dict[str, Any]) -> None:
+    def update_context(self, updates: dict[str, Any]) -> None:
         """Update internal context for better commentary"""
         self.context.update(updates)
         logger.debug(f"Context updated: {updates}")
 
-    async def get_show_status(self) -> Dict[str, Any]:
+    async def get_show_status(self) -> dict[str, Any]:
         """Return current show metadata"""
         return {
             "status": "live" if self._client else "limited_mode",

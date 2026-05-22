@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any
 from enum import Enum
 
 
@@ -30,13 +30,13 @@ class AudienceMetrics:
     sentiment: str = "neutral"
     engagement_rate: float = 0.5
     listener_count: int = 1000
-    request_queue: List[str] = field(default_factory=list)
+    request_queue: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AudienceMetrics":
+    def from_dict(cls, data: dict[str, Any]) -> "AudienceMetrics":
         return cls(**data)
 
 
@@ -48,16 +48,16 @@ class SegmentExecution:
     status: SegmentStatus = SegmentStatus.PENDING
     planned_duration: int = 0
     actual_duration: int = 0
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     language: str = "english"
     mood: str = "neutral"
     content_hash: str = ""
-    audio_url: Optional[str] = None
+    audio_url: str | None = None
     notes: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["status"] = self.status.value
         data["start_time"] = self.start_time.isoformat() if self.start_time else None
@@ -65,7 +65,7 @@ class SegmentExecution:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SegmentExecution":
+    def from_dict(cls, data: dict[str, Any]) -> "SegmentExecution":
         data_copy = data.copy()
         data_copy["status"] = SegmentStatus(data_copy.get("status", "pending"))
         if data_copy.get("start_time"):
@@ -81,9 +81,9 @@ class ShowState:
     show_name: str
     created_at: datetime = field(default_factory=datetime.utcnow)
     planned_duration: int = 0
-    scheduled_start_time: Optional[datetime] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    scheduled_start_time: datetime | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     status: BroadcastStatus = BroadcastStatus.CREATED
     current_segment_index: int = -1
     segments_completed: int = 0
@@ -91,7 +91,7 @@ class ShowState:
     elapsed_time: int = 0
     remaining_time: int = 0
     paused_duration: int = 0
-    segment_history: List[SegmentExecution] = field(default_factory=list)
+    segment_history: list[SegmentExecution] = field(default_factory=list)
     audience_metrics: AudienceMetrics = field(default_factory=AudienceMetrics)
     energy_level: float = 0.5
     humor_level: float = 0.3
@@ -101,9 +101,9 @@ class ShowState:
     current_language: str = "english"
     version: int = 1
     last_updated: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["status"] = self.status.value
         data["created_at"] = self.created_at.isoformat()
@@ -116,7 +116,7 @@ class ShowState:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ShowState":
+    def from_dict(cls, data: dict[str, Any]) -> "ShowState":
         data_copy = data.copy()
         data_copy["status"] = BroadcastStatus(data_copy.get("status", "created"))
         data_copy["created_at"] = datetime.fromisoformat(data_copy["created_at"])
@@ -131,7 +131,7 @@ class ShowState:
         data_copy["segment_history"] = [SegmentExecution.from_dict(entry) for entry in data_copy.get("segment_history", [])]
         return cls(**data_copy)
 
-    def update_timing(self, current_time: Optional[datetime] = None):
+    def update_timing(self, current_time: datetime | None = None):
         if current_time is None:
             current_time = datetime.utcnow()
         if self.start_time:
@@ -143,7 +143,7 @@ class ShowState:
     def is_active(self) -> bool:
         return self.status == BroadcastStatus.RUNNING
 
-    def current_segment(self) -> Optional[SegmentExecution]:
+    def current_segment(self) -> SegmentExecution | None:
         if 0 <= self.current_segment_index < len(self.segment_history):
             return self.segment_history[self.current_segment_index]
         return None
@@ -153,7 +153,7 @@ class ShowState:
         self.current_segment_index = len(self.segment_history) - 1
         self.total_segments = len(self.segment_history)
 
-    def get_recent_context(self, lookback_segments: int = 3) -> List[SegmentExecution]:
+    def get_recent_context(self, lookback_segments: int = 3) -> list[SegmentExecution]:
         return self.segment_history[-lookback_segments:]
 
     def complete_current_segment(self):

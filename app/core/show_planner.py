@@ -6,7 +6,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Dict, Any
+from typing import Any
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -51,8 +51,8 @@ class Segment:
     priority: int = 1  # 1=high, 10=low (for flexible segments)
     is_flexible: bool = False  # Can be shortened/extended
     optional: bool = False  # Can be skipped
-    requires_context: List[str] = field(default_factory=list)  # e.g., ["weather", "news"]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    requires_context: list[str] = field(default_factory=list)  # e.g., ["weather", "news"]
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> Dict:
         data = asdict(self)
@@ -78,10 +78,10 @@ class ShowPlan:
     show_name: str
     total_duration: int  # seconds
     created_at: datetime = field(default_factory=datetime.utcnow)
-    planned_start_time: Optional[datetime] = None
+    planned_start_time: datetime | None = None
     
     # Segments
-    segments: List[Segment] = field(default_factory=list)
+    segments: list[Segment] = field(default_factory=list)
     
     # Configuration
     primary_language: str = "english"
@@ -92,7 +92,7 @@ class ShowPlan:
     target_audience: str = ""
     theme: str = ""
     host_personality: str = "friendly, knowledgeable, energetic"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     # Execution hints
     buffer_seconds: int = 30  # Extra buffer for transitions
@@ -138,13 +138,13 @@ class ShowPlan:
         """Calculate total segment duration"""
         return sum(s.duration for s in self.segments)
     
-    def get_segment_by_index(self, index: int) -> Optional[Segment]:
+    def get_segment_by_index(self, index: int) -> Segment | None:
         """Get segment by index"""
         if 0 <= index < len(self.segments):
             return self.segments[index]
         return None
     
-    def get_segments_by_type(self, segment_type: SegmentType) -> List[Segment]:
+    def get_segments_by_type(self, segment_type: SegmentType) -> list[Segment]:
         """Get all segments of a specific type"""
         return [s for s in self.segments if s.segment_type == segment_type]
 
@@ -316,7 +316,7 @@ class ShowPlanner:
         else:
             return "6_hour"
     
-    def _normalize_segments(self, segments: List[Segment], total_duration: int) -> List[Segment]:
+    def _normalize_segments(self, segments: list[Segment], total_duration: int) -> list[Segment]:
         """
         Normalize segment durations to fit total_duration
         Preserves relative proportions for most segments
@@ -346,7 +346,7 @@ class ShowPlanner:
         
         return segments
     
-    def _get_context_requirements(self, segment_type: SegmentType) -> List[str]:
+    def _get_context_requirements(self, segment_type: SegmentType) -> list[str]:
         """Get required context for segment type"""
         context_map = {
             SegmentType.NEWS: ["news_feed", "recent_events"],

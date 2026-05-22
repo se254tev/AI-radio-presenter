@@ -2,7 +2,7 @@
 Music Queue Service - Queue management with Redis or in-memory fallback
 """
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any
 import json
 from datetime import datetime
 import asyncio
@@ -15,12 +15,12 @@ class MusicQueue:
     Redis-backed or in-memory music queue for managing track playback
     """
 
-    def __init__(self, redis_client: Optional[Any] = None, max_queue_size: int = 500):
+    def __init__(self, redis_client: Any | None = None, max_queue_size: int = 500):
         self.redis = redis_client
         self.max_queue = max_queue_size
         # In-memory fallback queue
-        self._local_queue: List[Dict[str, Any]] = []
-        self._current_track: Optional[Dict[str, Any]] = None
+        self._local_queue: list[dict[str, Any]] = []
+        self._current_track: dict[str, Any | None] | None = None
         self._queue_name = "radio:queue"
         self._current_key = "radio:current_track"
         self.event_callback = None
@@ -38,7 +38,7 @@ class MusicQueue:
         else:
             logger.info("Music queue using in-memory backend")
 
-    async def add_track(self, track: Dict[str, Any]) -> bool:
+    async def add_track(self, track: dict[str, Any]) -> bool:
         """Add track to queue"""
         try:
             if len(await self.get_queue_size()) >= self.max_queue:
@@ -58,7 +58,7 @@ class MusicQueue:
             logger.error(f"Failed to add track: {e}")
             return False
 
-    async def get_next_track(self) -> Optional[Dict[str, Any]]:
+    async def get_next_track(self) -> dict[str, Any | None]:
         """Get and remove next track from queue"""
         try:
             if self.redis:
@@ -88,7 +88,7 @@ class MusicQueue:
             logger.error(f"Failed to get next track: {e}")
             return None
 
-    async def peek_next(self) -> Optional[Dict[str, Any]]:
+    async def peek_next(self) -> dict[str, Any | None]:
         """Peek at next track without removing"""
         try:
             if self.redis:
@@ -103,7 +103,7 @@ class MusicQueue:
             logger.error(f"Failed to peek: {e}")
             return None
 
-    async def get_current_track(self) -> Optional[Dict[str, Any]]:
+    async def get_current_track(self) -> dict[str, Any | None]:
         """Get currently playing track"""
         try:
             if self.redis:
@@ -125,7 +125,7 @@ class MusicQueue:
             logger.error(f"Failed to get queue size: {e}")
             return 0
 
-    async def get_queue(self, limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_queue(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get queue contents (limited to prevent huge responses)"""
         try:
             limit = min(limit, 100)  # Cap at 100 items
@@ -150,7 +150,7 @@ class MusicQueue:
             logger.error(f"Failed to clear queue: {e}")
             return False
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """Return queue status"""
         return {
             "backend": "redis" if self.redis else "in-memory",
@@ -160,7 +160,7 @@ class MusicQueue:
             "next_track": await self.peek_next(),
         }
 
-    async def play_next(self) -> Optional[Dict[str, Any]]:
+    async def play_next(self) -> dict[str, Any | None]:
         """Advance to next track and return it. If queue empty, return a fallback track."""
         next_track = await self.get_next_track()
         if next_track:
@@ -184,7 +184,7 @@ class MusicQueue:
                 pass
         return fallback
 
-    async def ensure_playing(self) -> Dict[str, Any]:
+    async def ensure_playing(self) -> dict[str, Any]:
         """Ensure there's a current track; if none, start next."""
         current = await self.get_current_track()
         if current:

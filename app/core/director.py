@@ -5,7 +5,7 @@ Completely separate from content generation (LLM)
 """
 import logging
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Any
 from enum import Enum
 from datetime import datetime
 
@@ -42,9 +42,9 @@ class DirectorCommand:
     """Director command to be executed by broadcast loop"""
     decision: DirectorDecision
     reason: str
-    target_segment: Optional[str] = None  # Segment ID to apply to
+    target_segment: str | None = None  # Segment ID to apply to
     adjustment_value: float = 0.0  # For energy, duration adjustments
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] | None = None
     priority: int = 5
     timestamp: datetime = None
     
@@ -54,7 +54,7 @@ class DirectorCommand:
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "action": self.decision.value,
             "reason": self.reason,
@@ -96,7 +96,7 @@ class Director:
         """
         self.show_plan = show_plan
         self.logger = logging.getLogger(__name__)
-        self.decision_history: List[DirectorCommand] = []
+        self.decision_history: list[DirectorCommand] = []
     
     async def decide_next_action(self, state: ShowState) -> DirectorCommand:
         """
@@ -220,7 +220,7 @@ class Director:
         self,
         state: ShowState,
         current_segment: 'SegmentExecution'
-    ) -> Optional[DirectorCommand]:
+    ) -> DirectorCommand | None:
         """
         Check if current segment should be extended/shortened
         based on engagement and time remaining
@@ -251,7 +251,7 @@ class Director:
         
         return None
     
-    def _check_energy_adjustment(self, state: ShowState) -> Optional[DirectorCommand]:
+    def _check_energy_adjustment(self, state: ShowState) -> DirectorCommand | None:
         """
         Check if energy level needs adjustment
         - Inject high-energy segments if dropping
@@ -274,7 +274,7 @@ class Director:
         
         return None
     
-    def _check_language_switch(self, state: ShowState) -> Optional[DirectorCommand]:
+    def _check_language_switch(self, state: ShowState) -> DirectorCommand | None:
         """
         Decide on language switching based on context and rules
         """
@@ -396,7 +396,7 @@ class Director:
         
         return metrics
     
-    def get_decision_summary(self) -> Dict[str, Any]:
+    def get_decision_summary(self) -> dict[str, Any]:
         """Get summary of all decisions made"""
         return {
             "total_decisions": len(self.decision_history),
@@ -411,7 +411,7 @@ class Director:
             ],
         }
     
-    def _count_decisions(self) -> Dict[str, int]:
+    def _count_decisions(self) -> dict[str, int]:
         """Count decisions by type"""
         counts = {}
         for cmd in self.decision_history:

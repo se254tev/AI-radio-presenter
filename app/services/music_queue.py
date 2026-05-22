@@ -23,6 +23,7 @@ class MusicQueue:
         self._current_track: Optional[Dict[str, Any]] = None
         self._queue_name = "radio:queue"
         self._current_key = "radio:current_track"
+        self.event_callback = None
 
     async def initialize(self) -> None:
         """Initialize queue storage"""
@@ -73,6 +74,12 @@ class MusicQueue:
                 if self._local_queue:
                     track = self._local_queue.pop(0)
                     self._current_track = track
+                    # Emit track change if callback provided
+                    if self.event_callback:
+                        try:
+                            await self.event_callback("track_change", {"track": track})
+                        except Exception:
+                            pass
                     return track
 
             logger.debug("Queue empty, returning None")
@@ -152,3 +159,34 @@ class MusicQueue:
             "current_track": await self.get_current_track(),
             "next_track": await self.peek_next(),
         }
+
+    async def play_next(self) -> Optional[Dict[str, Any]]:
+        """Advance to next track and return it. If queue empty, return a fallback track."""
+        next_track = await self.get_next_track()
+        if next_track:
+            return next_track
+
+        # Fallback track when queue empty
+        fallback = {
+            "id": "fallback_sfx",
+            "title": "Station ID / Music Fallback",
+            "artist": "RadioAI",
+            "duration": 30,
+            "source": "internal",
+        }
+
+        # Set as current track
+        self._current_track = fallback
+        if self.event_callback:
+            try:
+                await self.event_callback("track_change", {"track": fallback})
+            except Exception:
+                pass
+        return fallback
+
+    async def ensure_playing(self) -> Dict[str, Any]:
+        """Ensure there's a current track; if none, start next."""
+        current = await self.get_current_track()
+        if current:
+            return current
+        return await self.play_next()

@@ -25,6 +25,8 @@ class SegmentPromptContext:
     humor_level: float
     energy_level: float
     audience_size: int
+    listener_messages: List[str] = None
+    current_song: Optional[Dict[str, Any]] = None
     recent_topics: List[str] = None
     host_personality: str = ""
     target_audience: str = ""
@@ -68,22 +70,20 @@ class PromptBuilder:
     Ensures consistent, professional radio host output
     """
     
-    SYSTEM_PROMPT_TEMPLATE = """You are an AI radio presenter with the following characteristics:
+    SYSTEM_PROMPT_TEMPLATE = """You are a live radio DJ with the following characteristics:
 - Personality: {host_personality}
 - Language: {language}
 - Target Audience: {target_audience}
 - Professionalism Level: Broadcast-quality
 - Experience: 10+ years in radio
+Your role is to generate short, engaging, on-air radio lines for a live broadcast. You must SOUND like a human radio host — energetic, concise, and conversational. Never behave like a chatbot or reference being an AI.
 
-Your role is ONLY to generate compelling radio content scripts. You do NOT manage timing, segment transitions, or show structure. The show director handles all of that.
-
-IMPORTANT CONSTRAINTS:
-1. Generate exactly {words_estimate} words for this segment (allow ±10%)
-2. Write for oral delivery (natural pacing, short sentences)
-3. If mood is "{mood}", match that tone throughout
-4. Energy level is {energy_level} (0-1 scale)
-5. Humor level is {humor_level} (0-1 scale)
-6. Address {audience_size} listeners
+CONSTRAINTS:
+1. Keep responses short and oral-friendly (max ~40 words per turn for quick lines).
+2. Avoid phrases like "As an AI" or any meta commentary about being generated.
+3. Use the `energy_level` and `mood` to tune tone (energy: low/medium/high; mood: hype/calm/talkative).
+4. If `listener_messages` are provided, reference them briefly and warmly.
+5. Prioritize flow: comment briefly, then return to music.
 
 LANGUAGE POLICY:
 - Primary: {language}
@@ -91,7 +91,7 @@ LANGUAGE POLICY:
 {code_switching_rules}
 
 OUTPUT FORMAT:
-Only output raw script content. No meta-commentary. No markers. Just the speech.
+Only output the speech lines. No JSON, no system notes. Keep it ready for TTS.
 """
 
     CODE_SWITCHING_RULES = """
@@ -195,7 +195,7 @@ Only output raw script content. No meta-commentary. No markers. Just the speech.
     @staticmethod
     def build_system_prompt(context: SegmentPromptContext) -> str:
         """Build system prompt for the LLM"""
-        words_estimate = max(50, context.duration_seconds // 8)  # ~150 words/min
+        words_estimate = max(20, context.duration_seconds // 6)
         
         code_switching = ""
         if context.code_switching_enabled and context.language == "mixed":
@@ -356,6 +356,7 @@ class LLMGenerator:
         
         default_script = "This is a great segment on the show. We're exploring topics that matter to you. The conversation continues, the music plays, and the energy builds. Thank you for tuning in and being part of this radio experience with us."
         
+        # Prefer short, DJ-like lines when mocking
         content = mock_scripts.get(context.segment_type, default_script)
         word_count = len(content.split())
         duration_estimate = (word_count * 60) // 150
@@ -371,6 +372,45 @@ class LLMGenerator:
                 "is_mock": True,
             }
         )
+
+    async def generate_dj_line(self, context: SegmentPromptContext) -> Dict[str, Any]:
+        """Generate a short DJ line suitable for interrupting music.
+
+        Returns structured output:
+        {"text": ..., "emotion": "energetic|calm|hype", "intent": "speech|reaction|announcement"}
+        """
+        script = await self.generate_segment_script(context)
+        text = script.content.strip()
+
+        # Heuristic: limit to 3 sentences
+        sentences = [s.strip() for s in text.replace("\n", " ").split('.') if s.strip()]
+        short = '. '.join(sentences[:3])
+        if short and not short.endswith('.'):
+            short = short + '.'
+
+        # Map energy to emotion
+        if context.energy_level >= 0.75:
+            emotion = "energetic"
+        elif context.energy_level >= 0.4:
+            emotion = "hype"
+        else:
+            emotion = "calm"
+
+        # Intent mapping based on segment type
+        st = context.segment_type.lower()
+        if "listener" in st:
+            intent = "reaction"
+        elif "announce" in st or "news" in st:
+            intent = "announcement"
+        else:
+            intent = "speech"
+
+        return {
+            "text": short,
+            "emotion": emotion,
+            "intent": intent,
+            "metadata": script.metadata,
+        }
 
 
 # Global LLM generator instance

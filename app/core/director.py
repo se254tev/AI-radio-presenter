@@ -27,6 +27,14 @@ class DirectorDecision(str, Enum):
     PAUSE = "pause"
     RESUME = "resume"
     EMERGENCY_STOP = "emergency_stop"
+    PLAY_MUSIC = "play_music"
+    AI_SPEECH = "ai_speech"
+    ANNOUNCEMENT = "announcement"
+    RESPOND_TO_LISTENER = "respond_to_listener"
+from app.core.state_engine import state_engine
+from app.streaming.websocket import ws_manager
+import json
+import random
 
 
 @dataclass
@@ -37,6 +45,7 @@ class DirectorCommand:
     target_segment: Optional[str] = None  # Segment ID to apply to
     adjustment_value: float = 0.0  # For energy, duration adjustments
     metadata: Dict[str, Any] = None
+    priority: int = 5
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -44,6 +53,17 @@ class DirectorCommand:
             self.timestamp = datetime.utcnow()
         if self.metadata is None:
             self.metadata = {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "action": self.decision.value,
+            "reason": self.reason,
+            "priority": int(self.priority),
+            "target_segment": self.target_segment,
+            "adjustment_value": self.adjustment_value,
+            "metadata": self.metadata,
+            "timestamp": self.timestamp.isoformat(),
+        }
 
 
 class Director:
@@ -78,7 +98,7 @@ class Director:
         self.logger = logging.getLogger(__name__)
         self.decision_history: List[DirectorCommand] = []
     
-    def decide_next_action(self, state: ShowState) -> DirectorCommand:
+    async def decide_next_action(self, state: ShowState) -> DirectorCommand:
         """
         Main decision-making function
         Analyzes current state and generates next action
@@ -95,6 +115,33 @@ class Director:
                 DirectorDecision.EMERGENCY_STOP,
                 "Show duration reached",
             )
+        # Check recent listener messages in websocket manager
+        try:
+            recent = ws_manager.get_recent_chats(10)
+        except Exception:
+            recent = []
+
+        # If there are listener messages, sometimes respond to them
+        if recent:
+            # 30% chance to respond to a listener message now
+            if random.random() < 0.3:
+                return self._make_command(
+                    DirectorDecision.RESPOND_TO_LISTENER,
+                    "Responding to recent listener messages",
+                )
+
+        # If audience energy is low, schedule an AI speech to boost energy
+        if state.energy_level < self.LOW_ENERGY_THRESHOLD:
+            return self._make_command(
+                DirectorDecision.AI_SPEECH,
+                "Boosting energy with AI speech",
+            )
+
+        # Default: ensure music keeps playing
+        return self._make_command(
+            DirectorDecision.PLAY_MUSIC,
+            "Continue or start music playback",
+        )
         
         current_segment = state.current_segment()
         

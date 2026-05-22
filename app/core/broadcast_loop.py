@@ -24,6 +24,9 @@ from ..ai.llm_generator import (
     LLMGenerator,
 )
 from ..voice.tts_engine import get_tts_engine, TTSEngine, AudioOutput
+from app.services.music_queue import MusicQueue
+from app.streaming.websocket import ws_manager
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,8 @@ class BroadcastLoop:
         self.director = Director(show_plan)
         self.llm_generator = get_llm_generator()
         self.tts_engine = get_tts_engine()
+        self.music_queue = MusicQueue()
+        self.music_queue.event_callback = self._on_music_event
         
         self.state: Optional[ShowState] = None
         self.is_running = False
@@ -134,6 +139,12 @@ class BroadcastLoop:
             await self._emit_event(BroadcastLoopEvent.SEGMENT_START, {"show_id": self.state.show_id})
             
             # Start main broadcast loop
+            # Initialize music queue
+            try:
+                await self.music_queue.initialize()
+            except Exception:
+                pass
+
             self.loop_task = asyncio.create_task(self._main_loop())
             
             return True
@@ -197,58 +208,80 @@ class BroadcastLoop:
         self.logger.info("Entering main broadcast loop")
         
         try:
+            # Continuous radio loop: alternate music and short AI speech
+            last_track_id = None
             while self.is_running:
                 # Handle pause
                 while self.is_paused and self.is_running:
                     await asyncio.sleep(0.5)
-                
+
                 if not self.is_running:
                     break
-                
+
                 # Update timing
                 self.state.update_timing()
-                
-                # Check if show is done
+
+                # End show when time's up
                 if self.state.remaining_time <= 0:
                     self.logger.info("Show duration reached - ending broadcast")
                     await self._finish_broadcast()
                     break
-                
-                # Get current segment
-                current_segment = self.state.current_segment()
-                
-                # Start new segment if needed
-                if not current_segment or current_segment.status == SegmentStatus.COMPLETED:
-                    await self._start_next_segment()
+
+                # Ask director what to do next (async)
+                try:
+                    director_decision = await self.director.decide_next_action(self.state)
+                    await self._emit_event(
+                        BroadcastLoopEvent.DIRECTOR_DECISION,
+                        {
+                            "decision": director_decision.decision.value,
+                            "reason": director_decision.reason,
+                        }
+                    )
+                except Exception as e:
+                    self.logger.debug(f"Director decision error: {e}")
+                    director_decision = None
+
+                # Ensure music is playing by default
+                current_track = await self.music_queue.ensure_playing()
+
+                # If track changed, broadcast track_play
+                track_id = current_track.get("id") if current_track else None
+                if track_id and track_id != last_track_id:
+                    last_track_id = track_id
+                    await ws_manager.broadcast_event("music", {"event": "track_play", "track": current_track})
+
+                # Check director decision
+                if director_decision and director_decision.decision in (
+                    DirectorDecision.AI_SPEECH,
+                    DirectorDecision.RESPOND_TO_LISTENER,
+                    DirectorDecision.ANNOUNCEMENT,
+                ):
+                    # Pause music (simulated) and run AI speech
+                    await self._handle_ai_interruption(director_decision, current_track)
+                    # After speech, always resume music
+                    await ws_manager.broadcast_event("music", {"event": "resume_music", "track": current_track})
                     await asyncio.sleep(0.5)
                     continue
-                
-                # Get director decision
-                director_decision = self.director.decide_next_action(self.state)
-                await self._emit_event(
-                    BroadcastLoopEvent.DIRECTOR_DECISION,
-                    {
-                        "decision": director_decision.decision.value,
-                        "reason": director_decision.reason,
-                    }
-                )
-                
-                # Execute director decision
-                await self._execute_director_decision(director_decision)
-                
-                # Check segment completion
-                segment_elapsed = await self._get_segment_elapsed_time(current_segment)
-                if segment_elapsed >= current_segment.planned_duration:
-                    current_segment.status = SegmentStatus.COMPLETED
-                    current_segment.end_time = datetime.utcnow()
-                    self.state.segments_completed += 1
-                    await self._emit_event(
-                        BroadcastLoopEvent.SEGMENT_COMPLETE,
-                        current_segment.to_dict()
-                    )
-                    await self.state_engine.save_state(self.state)
-                
-                # Small sleep to prevent busy-waiting
+
+                # Default: play through track duration but check periodically for interrupts
+                duration = int(current_track.get("duration", 30))
+                elapsed = 0
+                check_interval = 2
+                while elapsed < duration and self.is_running and not self.is_paused:
+                    await asyncio.sleep(min(check_interval, duration - elapsed))
+                    elapsed += min(check_interval, duration - elapsed)
+                    # Periodically re-check director for quick interruptions
+                    try:
+                        dd = await self.director.decide_next_action(self.state)
+                        if dd.decision in (DirectorDecision.AI_SPEECH, DirectorDecision.RESPOND_TO_LISTENER):
+                            director_decision = dd
+                            break
+                    except Exception:
+                        pass
+
+                # After track completes naturally, auto-advance
+                if self.is_running:
+                    await self.music_queue.play_next()
                 await asyncio.sleep(0.1)
         
         except asyncio.CancelledError:
@@ -259,6 +292,13 @@ class BroadcastLoop:
             await self._emit_event(BroadcastLoopEvent.ERROR, {"error": str(e)})
         finally:
             await self.state_engine.save_state(self.state)
+
+    async def _on_music_event(self, event_type: str, payload: Dict[str, Any]):
+        """Forward music queue events to websocket manager in unified format."""
+        try:
+            await ws_manager.broadcast_event("music", {"event": event_type, **(payload or {})})
+        except Exception:
+            pass
     
     async def _start_next_segment(self):
         """Start execution of next segment"""
@@ -430,6 +470,73 @@ class BroadcastLoop:
         
         except Exception as e:
             self.logger.error(f"Error executing director decision: {e}")
+
+    async def _handle_ai_interruption(self, decision, current_track):
+        """Generate short AI speech, synthesize, broadcast, and wait for playback to finish."""
+        try:
+            # Build context for AI using recent chats from websocket manager
+            recent = ws_manager.get_recent_chats(5)
+            listener_messages = [m.get("text") for m in recent]
+
+            segment_type = "music_block"
+            if decision.decision == DirectorDecision.RESPOND_TO_LISTENER:
+                segment_type = "listener_interaction"
+            elif decision.decision == DirectorDecision.ANNOUNCEMENT:
+                segment_type = "announcement"
+
+            mood_str = "calm"
+            if self.state.energy_level >= 0.75:
+                mood_str = "hype"
+            elif self.state.energy_level >= 0.4:
+                mood_str = "talkative"
+
+            context = SegmentPromptContext(
+                segment_type=segment_type,
+                segment_title=f"DJ_{segment_type}",
+                duration_seconds=20,
+                language=self.state.current_language,
+                mood=mood_str,
+                humor_level=self.state.humor_level,
+                energy_level=self.state.energy_level,
+                audience_size=getattr(self.state, 'audience_metrics', {}).listener_count if hasattr(self.state, 'audience_metrics') else 0,
+                recent_topics=[s.segment_type for s in self.state.get_recent_context(3)] if hasattr(self.state, 'get_recent_context') else [],
+                host_personality=self.show_plan.metadata.get("host_personality", "energetic, friendly"),
+                target_audience=self.show_plan.target_audience,
+                code_switching_enabled=self.show_plan.code_switching_enabled,
+                listener_messages=listener_messages,
+                current_song=current_track,
+            )
+
+            # Generate short DJ line (structured)
+            dj_output = await self.llm_generator.generate_dj_line(context)
+
+            text_out = dj_output.get("text", "")
+            intent = dj_output.get("intent", "speech")
+            emotion = dj_output.get("emotion", "calm")
+
+            # Synthesize
+            audio = await self.tts_engine.generate_audio(
+                segment_id=context.segment_title,
+                text=text_out,
+                language=context.language,
+                mood=emotion,
+                duration_estimate=10,
+            )
+
+            # Broadcast AI speech event
+            await ws_manager.broadcast_event("ai_speech", {
+                "text": text_out,
+                "audio_url": audio.audio_url,
+                "duration": audio.duration_seconds,
+                "intent": intent,
+                "emotion": emotion,
+            })
+
+            # Wait for playback to finish (non-blocking sleep)
+            await asyncio.sleep(audio.duration_seconds)
+
+        except Exception as e:
+            self.logger.error(f"AI interruption failed: {e}")
     
     async def _get_segment_elapsed_time(self, segment: SegmentExecution) -> int:
         """Get elapsed time for current segment"""

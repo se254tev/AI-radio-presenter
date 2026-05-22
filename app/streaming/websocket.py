@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import Set, Dict, Any
 
 from fastapi import WebSocket, WebSocketDisconnect
+import json as _json
+from app.core.state_engine import state_engine
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.connection_metadata: Dict[WebSocket, Dict[str, Any]] = {}
+        self.recent_chats: List[Dict[str, Any]] = []
 
     async def connect(self, websocket: WebSocket, client_id: str = "") -> None:
         """Register a new WebSocket connection"""
@@ -52,34 +55,42 @@ class ConnectionManager:
         for conn in disconnected:
             self.disconnect(conn)
 
+    def add_chat(self, chat: Dict[str, Any]) -> None:
+        """Store recent chat messages in-memory for quick consumption by director/AI."""
+        try:
+            self.recent_chats.insert(0, chat)
+            # Keep last 100
+            self.recent_chats = self.recent_chats[:100]
+        except Exception:
+            pass
+
+    def get_recent_chats(self, limit: int = 10) -> List[Dict[str, Any]]:
+        return list(self.recent_chats[:limit])
+
     async def broadcast_track_update(
         self, track: Dict[str, Any], event_type: str = "track_changed"
     ) -> None:
         """Broadcast track update to all listeners"""
-        message = {
-            "type": event_type,
-            "track": track,
-            "timestamp": datetime.utcnow().isoformat(),
-            "listener_count": len(self.active_connections),
-        }
-        await self.broadcast(message)
+        await self.broadcast_event("music", {"event": event_type, "track": track})
 
     async def broadcast_dj_message(self, text: str) -> None:
         """Broadcast AI DJ message"""
-        message = {
-            "type": "dj_message",
-            "text": text,
-            "timestamp": datetime.utcnow().isoformat(),
-            "listener_count": len(self.active_connections),
-        }
-        await self.broadcast(message)
+        await self.broadcast_event("ai_speech", {"text": text})
 
     async def broadcast_status(self, status: Dict[str, Any]) -> None:
         """Broadcast system status update"""
+        await self.broadcast_event("announcement", {"status": status})
+
+    async def broadcast_event(self, event_type: str, payload: Dict[str, Any]) -> None:
+        """Broadcast unified event format to all listeners.
+
+        Event format:
+        {"type": "ai_speech|music|announcement|chat", "timestamp": "...", "payload": {...}}
+        """
         message = {
-            "type": "status",
-            "data": status,
+            "type": event_type,
             "timestamp": datetime.utcnow().isoformat(),
+            "payload": payload,
             "listener_count": len(self.active_connections),
         }
         await self.broadcast(message)
@@ -127,7 +138,6 @@ async def handle_ws_connection(websocket: WebSocket) -> None:
     }
     """
     client_id = f"client_{len(ws_manager.active_connections)}"
-
     try:
         await ws_manager.connect(websocket, client_id)
 
@@ -144,7 +154,7 @@ async def handle_ws_connection(websocket: WebSocket) -> None:
         # Listen for incoming messages
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
+            message = _json.loads(data)
 
             # Handle different message types
             if message.get("type") == "ping":
@@ -153,13 +163,16 @@ async def handle_ws_connection(websocket: WebSocket) -> None:
                     websocket,
                 )
             elif message.get("type") == "chat":
-                # Broadcast chat message
-                await ws_manager.broadcast({
-                    "type": "chat",
+                chat_payload = {
                     "client_id": client_id,
                     "text": message.get("text", ""),
                     "timestamp": datetime.utcnow().isoformat(),
-                })
+                }
+
+                # Store chat locally for director/AI consumption and broadcast
+                ws_manager.add_chat(chat_payload)
+                await ws_manager.broadcast_event("chat", chat_payload)
+
             elif message.get("type") == "status_request":
                 # Send status to requester
                 await ws_manager.send_personal_message(

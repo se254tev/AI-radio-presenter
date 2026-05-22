@@ -22,6 +22,9 @@ from app.services.ai_dj import AIRadioHost
 from app.services.tts_engine import TTSEngine
 from app.services.music_queue import MusicQueue
 from app.streaming.websocket import handle_ws_connection, ws_manager
+from app.core.broadcast_loop import BroadcastLoop
+from app.models.show import ShowPlan
+from app.core.state_engine import state_engine
 
 # Configure logging
 configure_logging(CONFIG.broadcast.log_level)
@@ -102,6 +105,25 @@ async def lifespan(app: FastAPI):
         app.state.music_queue = music_queue
         app.state.ws_manager = ws_manager
         app.state.radio_service = service
+        # Start the continuous broadcast loop automatically
+        try:
+            default_plan = ShowPlan(
+                show_id="auto_default",
+                show_name="Auto Radio",
+                total_duration=24 * 3600,
+            )
+
+            async def _event_adapter(et, d):
+                await ws_manager.broadcast_event(getattr(et, 'value', str(et)), d)
+
+            broadcast_loop = BroadcastLoop(default_plan, state_engine, event_callback=_event_adapter)
+            # start in background
+            import asyncio as _asyncio
+            _asyncio.create_task(broadcast_loop.start_broadcast())
+            app.state.broadcast_loop = broadcast_loop
+            logger.info("Broadcast loop started in background")
+        except Exception as e:
+            logger.error(f"Failed to start broadcast loop: {e}")
 
         app.state.ready = True
         logger.info("✅ All services initialized successfully")

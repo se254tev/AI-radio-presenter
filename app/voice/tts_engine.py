@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from abc import ABC, abstractmethod
 import httpx
+import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,17 @@ class TTSEngine:
                     "mood": mood,
                 }
             )
+            # Provide a reachable audio_url (placeholder S3 path or CDN in production)
+            # Persist locally so it's accessible; producers can replace with S3 upload
+            try:
+                os.makedirs("./audio_cache", exist_ok=True)
+                filename = f"{segment_id}_{int(time.time())}.mp3"
+                path = os.path.join("./audio_cache", filename)
+                with open(path, "wb") as fh:
+                    fh.write(audio_data)
+                audio.audio_url = f"file://{os.path.abspath(path)}"
+            except Exception:
+                audio.audio_url = f"s3://radio-ai/audio/{segment_id}.mp3"
             
             return audio
             
